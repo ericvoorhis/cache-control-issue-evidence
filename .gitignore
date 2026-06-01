@@ -1,0 +1,13 @@
+# Terraform working dirs / state (local state is throwaway test infra)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# OpenNext build output (regenerated via `npx open-next build`)
+app/.open-next/
