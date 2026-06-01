@@ -2,7 +2,7 @@
 
 ## Overview
 
-Version 3.6.2 of https://github.com/RJPearson94/terraform-aws-open-next has a bug where the static, content-hashed build assets (everything under `_next/static/`) receive no `Cache-Control` response header at all, leading to browsers not caching them as immutable [the way Next.js intends](https://nextjs.org/docs/app/guides/cdn-caching#static-assets).
+Version 3.6.2 of https://github.com/RJPearson94/terraform-aws-open-next has a bug where CDN-served assets are not receiving any `Cache-Control` response header at all. This is especially a problem because content-hashed build assets (everything under `_next/static/`) are not being treated by browsers as immutable [the way Next.js intends](https://nextjs.org/docs/app/guides/cdn-caching#static-assets).
 
 This test repo reproduces the `terraform-aws-open-next` Cache-Control fix by
 deploying **the same Next.js app twice** from a single Terraform root:
