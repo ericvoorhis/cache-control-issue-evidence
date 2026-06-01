@@ -33,7 +33,7 @@ cache-control-issue-evidence/
   standard AWS chain, e.g. `AWS_PROFILE`. Region defaults to `us-west-2`
   (CloudFront cert/global resources use `us-east-1`).
 - No DNS or ACM setup needed because the deploys use the default `*.cloudfront.net`
-  domain and the default CloudFront certificate (no `domain_config`).
+  domain and the default CloudFront certificate.
 
 ## Reproduce
 
@@ -57,19 +57,21 @@ AWS_PROFILE=<your-test-account-profile> terraform output
 
 Each site renders a `CACHE_CONTROL_FIX_VARIANT` server environment variable on their home page so that you can quickly tell them apart.
 
-You can identify the fix, by pulling up the dev console for each deployment and checking an app chunk's `Cache-Control` response headers side by side.
+You can identify the fix, by pulling up the browser dev tools network tab for each deployment and checking a specific app chunk's `Cache-Control` response headers side by side.
 
-Before fix:
+| Before fix |
+| --- |
+| <img width="1512" height="862" alt="before fix" src="https://github.com/user-attachments/assets/74c09cdf-c28c-4ba6-b13c-0c0c355e0ce6"> |
 
-
-After fix:
-
+| After fix |
+| --- |
+| <img width="1512" height="861" alt="after fix" src="https://github.com/user-attachments/assets/541156af-285c-4e21-b279-a7800e5bfbe8"> |
 
 ## What to look at
 
 - **`regex-check/`** — run `terraform init && terraform test` for a ~1-second,
-  AWS-free proof that the shipped regex marks `_next/static` (incl. under a
-  basePath) immutable and excludes stable-URL files like `favicon.ico`.
+  AWS-free proof that the shipped regex marks `_next/static` (including under a
+  [basePath](https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath)) immutable and excludes stable-URL files like `favicon.ico`.
 
 ## Teardown
 
