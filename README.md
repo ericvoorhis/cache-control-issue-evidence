@@ -2,7 +2,7 @@
 
 ## Overview
 
-Version 3.6.2 of https://github.com/RJPearson94/terraform-aws-open-next has a bug where the static, content-hashed, build assets (everything under `_next/static/`) are not getting marked with the `immutable` directive in their `Cache-Control` response headers as they should be according to https://nextjs.org/docs/app/guides/cdn-caching#static-assets.
+Version 3.6.2 of https://github.com/RJPearson94/terraform-aws-open-next has a bug where the static, content-hashed build assets (everything under `_next/static/`) receive no `Cache-Control` response header at all, leading to browsers not caching them as immutable [the way Next.js intends](https://nextjs.org/docs/app/guides/cdn-caching#static-assets).
 
 This test repo reproduces the `terraform-aws-open-next` Cache-Control fix by
 deploying **the same Next.js app twice** from a single Terraform root:
@@ -10,12 +10,12 @@ deploying **the same Next.js app twice** from a single Terraform root:
 - **beforefix** — the pristine **upstream** module (`?ref=v3.6.2`): ships assets
   with **no `Cache-Control` header**.
 - **afterfix** — the **patched fork** (`?ref=fix/immutable-cache-control-headers`):
-  ships the intended headers (`immutable` for content-hashed `_next/static`,
-  `must-revalidate` for stable-name files like `favicon.ico`).
+  ships the intended `Cache-Control` header (`public,max-age=31536000,immutable` for content-hashed `_next/static`,
+  `public,max-age=0,s-maxage=31536000,must-revalidate` for stable-name files like `favicon.ico`).
 
 Because both deploys read the *same* `app/.open-next` build artifact, the asset
 filenames are identical and the only meaningful difference is the module
-`source` — so any header difference is attributable to the patch alone.
+`source`.
 
 ```
 cache-control-issue-evidence/
@@ -27,7 +27,7 @@ cache-control-issue-evidence/
 ## Prerequisites
 
 - **Node** per `app/.nvmrc` (Node 24) — `nvm use` in `app/`.
-- **Terraform** >= 1.14 (or OpenTofu).
+- **Terraform** >= 1.14.
 - **AWS credentials** for a throwaway/test account. Nothing is pinned to a named
   profile in the code (see `terraform/providers.tf`); supply your own via the
   standard AWS chain, e.g. `AWS_PROFILE`. Region defaults to `us-west-2`
@@ -38,26 +38,26 @@ cache-control-issue-evidence/
 ## Reproduce
 
 ```bash
-# 1. Build the shared OpenNext artifact once.
+# (1) Build the shared OpenNext artifact once.
 cd app
 nvm use             # Node 24, per .nvmrc
 npm install
 npx open-next build # produces app/.open-next/
 
-# 2. Deploy both variants from the single Terraform root.
+# (2) Deploy both variants from the single Terraform root.
 cd ../terraform
 terraform init
 AWS_PROFILE=<your-test-account-profile> terraform apply
 
-# 3. Read the two CloudFront URLs + bucket names.
+# (3) Read the two CloudFront URLs + bucket names.
 AWS_PROFILE=<your-test-account-profile> terraform output
 ```
 
-`terraform apply` stands up two independent OpenNext stacks (`cache-control-test-beforefix-*` and `cache-control-test-afterfix-*`). The URLs are in the above `terraform output` output keyed by `beforefix_url` and `afterfix_url`.
+`terraform apply` stands up two independent OpenNext stacks (`cache-control-test-beforefix-*` and `cache-control-test-afterfix-*`). The URLs are in the above `terraform output` keyed by `beforefix_url` and `afterfix_url`.
 
-Each site renders a `CACHE_CONTROL_FIX_VARIANT` server environment variable on their home page so that you can quickly tell them apart.
+Each site renders its `CACHE_CONTROL_FIX_VARIANT` server environment variable on its home page so that you can quickly tell them apart.
 
-You can identify the fix, by pulling up the browser dev tools network tab for each deployment and checking a specific app chunk's `Cache-Control` response headers side by side.
+You can identify the fix by pulling up the browser dev tools network tab for each deployment and checking a specific app chunk's `Cache-Control` response headers side by side.
 
 | Before fix |
 | --- |
@@ -67,11 +67,15 @@ You can identify the fix, by pulling up the browser dev tools network tab for ea
 | --- |
 | <img width="1512" height="861" alt="after fix" src="https://github.com/user-attachments/assets/541156af-285c-4e21-b279-a7800e5bfbe8"> |
 
-## What to look at
+If you want to quickly verify that the regex matches the correct paths without creating AWS resources, run:
 
-- **`regex-check/`** — run `terraform init && terraform test` for a ~1-second,
-  AWS-free proof that the shipped regex marks `_next/static` (including under a
-  [basePath](https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath)) immutable and excludes stable-URL files like `favicon.ico`.
+```
+cd regex-check
+terraform init
+terraform test
+```
+
+Note that the regex accounts for the possibility of a changed [basePath](https://nextjs.org/docs/app/api-reference/config/next-config-js/basePath).
 
 ## Teardown
 
